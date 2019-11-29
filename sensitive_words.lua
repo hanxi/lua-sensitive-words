@@ -2,14 +2,42 @@ local tpack = table.pack
 local ucodes = utf8.codes
 local uchar = utf8.char
 local ucodepoint = utf8.codepoint
+local sformat = string.format
+local tconcat = table.concat
 
 local _M = {}
+
+-- 分词处理
+local function text_split(text)
+    text = text:lower():gsub("[-_',.]", " "):gsub("(%w)(%W)", "%1 %2"):gsub("(%W)(%w)", "%1 %2")
+    local i = 1
+    local t = {" "}
+    for k in text:gmatch("%S+") do
+        i = i + 1
+        t[i] = k
+        i = i + 1
+        t[i] = " "
+    end
+    return tconcat(t)
+end
+
+-- 屏蔽词汇分词处理
+local function word_filter(word)
+    word = word:lower():gsub("[-_']", " "):gsub("^%s*(.-)%s*$", "%1")
+    if word:find("[^a-z0-9 ]") then
+        -- 不是纯字母数字
+        return word
+    end
+    -- 纯字母数字前后加空格
+    return sformat(" %s ", word)
+end
 
 local function build_dict(words)
     local dict = {}
     local cur_dict
     local sub_dict
     for _,word in pairs(words) do
+        word = word_filter(word)
         cur_dict = dict
         for _,c in ucodes(word) do
             sub_dict = cur_dict[c]
@@ -55,6 +83,7 @@ function _M:dict_dump()
 end
 
 function _M:check(text)
+    text = text_split(text)
     local dict = self._dict
     local arr = tpack(ucodepoint(text, 1, #text))
     local len = #arr
